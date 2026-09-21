@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>孤独脑洞 · LONELY BRAIN</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="preconnect" href="https://fonts.loli.net">
+<link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+<link href="https://fonts.loli.net/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --display-font:'Anton','Arial Narrow',Impact,sans-serif;
+    --logo-cn:'ZCOOL QingKe HuangYou','Microsoft YaHei',sans-serif;
+    --body-font:'Noto Sans SC','Segoe UI','Microsoft YaHei',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;touch-action:none;}
+  body{
+    font-family:var(--body-font);
+    background:#1440a8;
+    color:#fff;
+    user-select:none;
+    -webkit-user-select:none;
+    cursor:default;
+  }
+  body.grabbing, body.grabbing .card3d{cursor:grabbing;}
+
+  /* ---------- 背景粒子层 ---------- */
+  #bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+  /* ---------- 滚动舞台 ---------- */
+  #stage{position:fixed;inset:0;z-index:1;overflow:hidden;cursor:grab;}
+  #column{will-change:transform;}
+  .panel{position:relative;height:100vh;margin-bottom:-10vh;perspective:1500px;perspective-origin:60% 40%;}
+
+  /* ---------- 首页 shader 主视觉 ---------- */
+  /* 底部渐隐遮罩：滚离首页时 shader 溶解进蓝色背景，衔接更柔和 */
+  #heroVisual{
+    position:absolute;inset:0;
+    -webkit-mask-image:linear-gradient(180deg,#000 58%,transparent 98%);
+    mask-image:linear-gradient(180deg,#000 58%,transparent 98%);
+  }
+  #heroGL{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .hero-veil{
+    position:absolute;inset:0;pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px),
+      radial-gradient(120% 100% at 50% 45%,transparent 45%,rgba(2,0,12,.5) 100%);
+  }
+
+  /* 卡片 */
+  .card3d{
+    position:absolute;
+    left:23.5vw;top:6.2vh;
+    width:75vw;height:82.5vh;
+    border-radius:22px;
+    overflow:hidden;
+    display:block;
+    text-decoration:none;
+    background:#0a0618;
+    transform:rotateX(9deg) rotateZ(-1.4deg);
+    transform-style:preserve-3d;
+    box-shadow:
+      0 40px 90px rgba(5,0,30,.55),
+      0 0 0 1px rgba(255,255,255,.28),
+      inset 0 0 0 1px rgba(255,255,255,.12);
+    cursor:pointer;
+    outline:none;
+    transition:filter .35s ease;
+  }
+  .card3d:hover{filter:brightness(1.12) saturate(1.08);}
+  .card3d img{
+    width:100%;height:100%;object-fit:cover;display:block;
+    -webkit-user-drag:none;pointer-events:none;
+  }
+  /* 卡内画面缓慢呼吸缩放（纯合成器动画，不占主线程） */
+  .kb{animation:kb 20s ease-in-out infinite alternate;}
+  .kb2{animation:kb2 24s ease-in-out infinite alternate;}
+  .kb3{animation:kb 26s ease-in-out infinite alternate-reverse;}
+  @keyframes kb{from{transform:scale(1.04) translate(0,0)}to{transform:scale(1.14) translate(-1.6%,1.2%)}}
+  @keyframes kb2{from{transform:scale(1.14) translate(1.2%,-1%)}to{transform:scale(1.04) translate(0,0)}}
+
+  /* CRT 质感：扫描线 + 暗角 + 色差边缘 */
+  .card3d::after{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px),
+      radial-gradient(115% 100% at 50% 50%,transparent 52%,rgba(0,0,10,.42) 100%);
+    box-shadow:
+      inset 4px 0 10px rgba(255,0,90,.22),
+      inset -4px 0 10px rgba(0,225,255,.22);
+  }
+
+  /* ---------- 文案区 ---------- */
+  .copy{
+    position:absolute;left:9.5vw;top:50%;
+    width:40vw;z-index:3;
+    transform:translateY(-53%);
+    pointer-events:none;
+  }
+  .copy.wide{width:56vw;}
+  .overline{
+    font-size:12px;letter-spacing:4px;font-weight:600;
+    color:rgba(255,255,255,.78);
+    margin-bottom:2.2vh;
+    text-shadow:0 2px 10px rgba(10,0,40,.6);
+  }
+  .copy h1{
+    font-family:var(--display-font);
+    font-size:clamp(56px,9.4vw,150px);
+    line-height:.92;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    color:#fff;
+    text-shadow:
+      0 0 16px rgba(255,255,255,.55),
+      0 0 60px rgba(255,255,255,.28),
+      2px 0 0 rgba(255,0,90,.22),
+      -2px 0 0 rgba(0,225,255,.22);
+    margin-bottom:2.6vh;
+  }
+  .copy h1.tight{font-size:clamp(44px,7vw,112px);}
+  .copy h1.cnfont{
+    font-family:var(--logo-cn);
+    font-weight:400;
+    text-transform:none;
+    letter-spacing:8px;
+    text-shadow:0 0 22px rgba(140,190,255,.6),0 4px 30px rgba(0,20,70,.65);
+  }
+  .brand-cn{
+    font-family:var(--logo-cn);
+    font-size:clamp(30px,4.2vw,64px);
+    letter-spacing:14px;
+    margin-bottom:2.4vh;
+    text-shadow:0 0 24px rgba(140,190,255,.6),0 4px 30px rgba(0,20,70,.65);
+  }
+  .copy p{
+    font-size:clamp(15px,1.35vw,21px);
+    font-weight:400;
+    line-height:1.75;
+    color:rgba(255,255,255,.95);
+    letter-spacing:.4px;
+    margin-bottom:4.5vh;
+    text-shadow:0 2px 14px rgba(20,0,60,.6);
+  }
+  .copy p.dim{opacity:.88;max-width:34em;}
+  .actions{display:flex;gap:16px;align-items:center;pointer-events:auto;}
+  .btn-explore{
+    font-family:var(--body-font);
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:15px 42px;border-radius:999px;
+    background:#fff;color:#241a3a;
+    font-weight:700;font-size:15px;letter-spacing:2.5px;
+    text-decoration:none;border:none;cursor:pointer;
+    box-shadow:0 10px 30px rgba(10,0,40,.4);
+    transition:transform .2s ease,box-shadow .2s ease;
+  }
+  .btn-explore:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(10,0,40,.55),0 0 24px rgba(255,255,255,.35);}
+  .btn-help{
+    width:46px;height:46px;border-radius:50%;
+    background:#fff;color:#241a3a;border:none;
+    font-size:19px;font-weight:700;cursor:pointer;
+    box-shadow:0 10px 30px rgba(10,0,40,.4);
+    transition:transform .2s ease;
+  }
+  .btn-help:hover{transform:translateY(-2px);}
+
+  /* ---------- 概念页作品索引 ---------- */
+  .index-list{display:flex;flex-direction:column;width:30em;max-width:44vw;}
+  .index-row{
+    display:flex;align-items:baseline;gap:18px;
+    padding:1.6vh 4px;border-bottom:1px solid rgba(255,255,255,.22);
+    cursor:pointer;pointer-events:auto;
+    transition:background .2s,padding-left .2s;
+  }
+  .index-row:first-child{border-top:1px solid rgba(255,255,255,.22);}
+  .index-row:hover{background:rgba(255,255,255,.08);padding-left:14px;}
+  .index-row i{font-style:normal;font-family:var(--display-font);font-size:15px;opacity:.7;letter-spacing:1px;}
+  .index-row b{font-family:var(--display-font);font-weight:400;font-size:clamp(17px,1.6vw,24px);letter-spacing:1px;}
+  .index-row span{margin-left:auto;font-size:12.5px;letter-spacing:2px;opacity:.65;}
+
+  /* ---------- 顶栏 ---------- */
+  header{display:none;}
+
+  /* ---------- 右侧进度条 ---------- */
+  #track{
+    position:fixed;right:17px;top:30vh;height:40vh;width:3px;z-index:20;
+    background:rgba(255,255,255,.22);border-radius:3px;cursor:pointer;
+  }
+  #thumb{
+    position:absolute;left:-1.5px;width:6px;border-radius:4px;
+    background:rgba(255,255,255,.9);box-shadow:0 0 10px rgba(255,255,255,.6);
+  }
+
+  /* ---------- 滚动提示 ---------- */
+  #hint{
+    position:fixed;left:50%;bottom:11.5vh;transform:translateX(-50%);z-index:19;
+    display:flex;flex-direction:column;align-items:center;gap:7px;
+    opacity:.85;transition:opacity .6s;pointer-events:none;
+  }
+  #hint.gone{opacity:0;}
+  .mouse{width:21px;height:33px;border:1.8px solid rgba(255,255,255,.85);border-radius:12px;position:relative;}
+  .mouse::after{
+    content:'';position:absolute;left:50%;top:6px;width:3px;height:7px;margin-left:-1.5px;
+    background:#fff;border-radius:2px;animation:wheel 1.4s ease-in-out infinite;
+  }
+  @keyframes wheel{55%{transform:translateY(9px);opacity:.2}70%{transform:translateY(0);opacity:1}}
+  #hint em{font-style:normal;font-size:10px;letter-spacing:3.5px;opacity:.85;}
+
+  /* ---------- 帮助气泡 ---------- */
+  #tip{
+    position:fixed;left:9.5vw;bottom:16vh;z-index:30;
+    max-width:330px;padding:14px 18px;border-radius:14px;
+    background:rgba(18,4,50,.92);border:1px solid rgba(255,255,255,.25);
+    font-size:13.5px;line-height:1.7;color:rgba(255,255,255,.95);
+    box-shadow:0 18px 50px rgba(0,0,20,.5);
+    opacity:0;transform:translateY(8px);pointer-events:none;
+    transition:opacity .25s,transform .25s;
+  }
+  #tip.show{opacity:1;transform:none;}
+
+  @media (max-width:860px){
+    .copy{left:6vw;width:88vw;z-index:5;top:20vh;transform:none;}
+    .copy.wide{width:88vw;}
+    .copy h1{font-size:15vw;}
+    .card3d{left:4vw;top:42vh;width:92vw;height:50vh;}
+    header{padding:18px 20px;}
+    .index-list{max-width:88vw;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div id="stage">
+  <div id="column">
+
+    <!-- ============ 0 · 首页：logo 主视觉（蓝色 shader 动态背景） ============ -->
+    <section class="panel" data-top="rgb(40,100,225)" data-base="rgb(20,64,168)" data-deep="rgb(6,20,60)">
+      <div id="heroVisual">
+        <canvas id="heroGL"></canvas>
+        <div class="hero-veil"></div>
+      </div>
+      <div class="copy">
+        <div class="overline">LONELY BRAIN LAB · WEB EXPERIENCE</div>
+        <h1>Lonely<br>Brain</h1>
+        <div class="brand-cn">孤独脑洞</div>
+        <p class="dim">孤独不是空白 — 是还没被点开的脑洞。</p>
+        <div class="actions">
+          <button class="btn-explore" id="startBtn" type="button">开始探索</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 1 · 概念简介（蓝色） ============ -->
+    <section class="panel" data-top="rgb(40,100,225)" data-base="rgb(20,64,168)" data-deep="rgb(6,20,60)">
+      <div class="copy wide">
+        <div class="overline">CONCEPT · WHAT IS LONELY BRAIN</div>
+        <h1 class="cnfont">孤独脑洞</h1>
+        <p class="dim">「孤独脑洞」是一个献给独处时光的小型实验室。没有喧嚣，没有算法的洪流，只有你、一块屏幕，和随时可以钻进去的怪念头。</p>
+        <p class="dim">我们相信孤独不是空白，而是想象力的暗房。三个由独立开发者打造的小世界，分别用<em style="font-style:normal;color:#ffb86b">战斗</em>、<em style="font-style:normal;color:#a78bfa">凝视</em>与<em style="font-style:normal;color:#67e8f9">流动</em>，回应同一种情绪。</p>
+        <div class="index-list">
+          <div class="index-row" data-goto="2"><i>01</i><b>SOLITUDE REALM</b><span>进入 →</span></div>
+          <div class="index-row" data-goto="3"><i>02</i><b>LONELY BRAIN-EYE</b><span>进入 →</span></div>
+          <div class="index-row" data-goto="4"><i>03</i><b>CINE SHADER LAVA</b><span>进入 →</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · SOLITUDE REALM ============ -->
+    <section class="panel" data-top="rgb(190,70,50)" data-base="rgb(122,32,26)" data-deep="rgb(36,9,10)">
+      <a class="card3d" href="https://qzq99999.github.io/solitude-realm/" target="_blank" rel="noopener" aria-label="打开游戏 Solitude Realm">
+        <img class="kb" src="assets/realm.png" alt="Solitude Realm 启动画面">
+      </a>
+      <div class="copy">
+        <div class="overline">GAME 01 · ELEMENTAL ARENA</div>
+        <h1>Solitude<br>Realm</h1>
+        <p>孤独领域 · 元素竞技场 — 施放法术，改写整个世界</p>
+        <div class="actions">
+          <a class="btn-explore" href="https://qzq99999.github.io/solitude-realm/" target="_blank" rel="noopener">EXPLORE</a>
+          <button class="btn-help" type="button" aria-label="帮助">?</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 · LONELY BRAIN-EYE ============ -->
+    <section class="panel" data-top="rgb(102,62,198)" data-base="rgb(56,34,128)" data-deep="rgb(16,10,44)">
+      <a class="card3d" href="https://leiyanfeisocool-create.github.io/lonely-brain-eye/" target="_blank" rel="noopener" aria-label="打开游戏 Lonely Brain-Eye">
+        <img class="kb2" src="assets/braineye.png" alt="Lonely Brain-Eye 启动画面">
+      </a>
+      <div class="copy">
+        <div class="overline">GAME 02 · GENERATIVE VISUAL</div>
+        <h1>Lonely<br>Brain&#8209;Eye</h1>
+        <p>孤独脑眼 · 生成式视觉交互 — 动一动，轻一点</p>
+        <div class="actions">
+          <a class="btn-explore" href="https://leiyanfeisocool-create.github.io/lonely-brain-eye/" target="_blank" rel="noopener">EXPLORE</a>
+          <button class="btn-help" type="button" aria-label="帮助">?</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4 · CINE SHADER LAVA ============ -->
+    <section class="panel" data-top="rgb(222,122,50)" data-base="rgb(158,76,26)" data-deep="rgb(56,22,8)">
+      <a class="card3d" href="https://sabrina-ph.github.io/cineshader-lava/cineshader-lava-interactive.html" target="_blank" rel="noopener" aria-label="打开游戏 CineShader Lava">
+        <img class="kb3" src="assets/lava.png" alt="CineShader Lava 启动画面">
+      </a>
+      <div class="copy">
+        <div class="overline">GAME 03 · INTERACTIVE SHADER</div>
+        <h1 class="tight">Cine&nbsp;Shader<br>Lava</h1>
+        <p>交互式熔岩着色器 — 移动光标，熔岩随行</p>
+        <div class="actions">
+          <a class="btn-explore" href="https://sabrina-ph.github.io/cineshader-lava/cineshader-lava-interactive.html" target="_blank" rel="noopener">EXPLORE</a>
+          <button class="btn-help" type="button" aria-label="帮助">?</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 5 · 结束页（黑色） ============ -->
+    <section class="panel" data-top="rgb(34,34,38)" data-base="rgb(12,12,14)" data-deep="rgb(0,0,0)">
+      <div class="copy">
+        <div class="overline">LONELY BRAIN LAB</div>
+        <h1>The<br>End</h1>
+        <p class="dim">孤独不会结束，脑洞也不会。</p>
+        <p class="dim">感谢你滚到这里。三个小世界一直都在 —— 下次孤独的时候，随时回来。</p>
+        <div class="actions">
+          <button class="btn-explore" id="restartBtn" type="button">回到开头</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<header></header>
+
+<div id="track"><div id="thumb"></div></div>
+
+<div id="hint">
+  <div class="mouse"></div>
+  <em>SCROLL</em>
+</div>
+
+<div id="tip">点击卡片画面或 EXPLORE 按钮打开对应游戏；滚轮、按住拖动或方向键均可换页。</div>
+
+<script>
+/* ================================================================
+   孤独脑洞 · LONELY BRAIN
+   复刻 andersonmancini.dev 的开屏美术风格与卡片堆叠滚动效果。
+   页面结构：品牌首页(shader 主视觉) → 概念简介 → 三个游戏(首屏截图卡片，点击跳转)。
+
+   关键设计：画面更新由输入事件「同步驱动」——滚轮/拖动/按键
+   每个事件都立刻渲染一帧，不依赖 requestAnimationFrame 或定时器。
+   rAF 仅用于输入间隙的惯性滑行与 shader 动画。
+   ================================================================ */
+'use strict';
+
+const clamp = (v,a,b)=>Math.min(b,Math.max(a,v));
+
+/* ---------------- 状态 ---------------- */
+const column  = document.getElementById('column');
+const panels  = [...document.querySelectorAll('.panel')];
+const thumb   = document.getElementById('thumb');
+const track   = document.getElementById('track');
+const hint    = document.getElementById('hint');
+const tip     = document.getElementById('tip');
+const stage   = document.getElementById('stage');
+
+const N       = panels.length;
+let vh        = innerHeight;
+let step      = vh * 0.90;          // 每屏步进 90vh，静止时下一屏在底部露出一截
+let maxScroll = (N - 1) * step;
+let target    = 0, current = 0;
+let trackH    = track.getBoundingClientRect().height;
+let interacted = false;
+
+function markInteracted(){
+  if(!interacted && target > 14){ interacted = true; hint.classList.add('gone'); }
+}
+
+/* ---------------- 渲染一帧（可被任何输入同步调用） ---------------- */
+let lastTime = performance.now();
+let lastTransform = '', lastBG = '', lastThumbTop = -1, lastBgDraw = -1e9;
+
+/* 每帧校准视口：面板折叠时加载会拿到 innerHeight=0，导致 step/maxScroll
+   永久为 0、页面彻底卡死。这里在视口恢复的第一帧自动解锁。 */
+function syncMetrics(){
+  const h = innerHeight || document.documentElement.clientHeight || 0;
+  if(!h || h === vh) return;
+  const idx = vh > 0 ? Math.round(target / step) : 0;
+  vh = h;
+  step = vh * 0.90;
+  maxScroll = (N - 1) * step;
+  target = current = clamp(idx * step, 0, maxScroll);
+  trackH = track.getBoundingClientRect().height;
+}
+
+function frame(now){
+  syncMetrics();
+  /* 深链定位：视口就绪后应用一次 */
+  if(pendingIndex !== null && step > 0){
+    target = current = clamp(pendingIndex * step, 0, maxScroll);
+    if(pendingIndex > 0){ interacted = true; hint.classList.add('gone'); }
+    pendingIndex = null;
+  }
+  const raw = now - lastTime;
+  const dt = (raw > 0 && raw < 2000) ? Math.min(50, raw) : 16.7;
+  lastTime = now;
+  const k = 1 - Math.pow(1 - .11, dt/16.67);
+  current += (target - current)*k;
+  if(Math.abs(target - current) < .05) current = target;
+
+  const tr = `translate3d(0,${(-current).toFixed(2)}px,0)`;
+  if(tr !== lastTransform){ column.style.transform = tr; lastTransform = tr; }
+
+  for(let i=0;i<N;i++){
+    const local = (current - i*step) / step;          // 0=居中, ±1=相邻
+    const tilt = clamp(-local*11, -16, 16);
+    const scl  = 1 - Math.min(.06, Math.abs(local)*.05);
+    cards[i].style.transform = `rotateX(${(9+tilt).toFixed(2)}deg) rotateZ(-1.4deg) scale(${scl.toFixed(3)})`;
+    copies[i].style.opacity  = clamp(1 - Math.abs(local)*1.45, 0, 1).toFixed(3);
+    copies[i].style.transform = `translateY(calc(-53% + ${(local*-46).toFixed(1)}px))`;
+    const z = String(100 - Math.round(Math.abs(local)*50));
+    if(panels[i].style.zIndex !== z) panels[i].style.zIndex = z;
+  }
+
+  /* 首页 shader 视差 + 淡出：滚向第二页时溶解进蓝色背景，衔接柔和 */
+  if(heroVisual){
+    const hl = clamp(current / step, 0, 1);
+    heroVisual.style.transform = `translate3d(0,${(hl*10).toFixed(2)}vh,0)`;
+    heroVisual.style.opacity = clamp(1 - hl*1.3, 0, 1).toFixed(3);
+  }
+
+  /* 背景色随滚动过渡（限频，避免整页渐变重绘开销） */
+  if(now - lastBgDraw > 60){
+    lastBgDraw = now;
+    const g = maxScroll ? clamp(current / maxScroll, 0, 1) * (N - 1) : 0;
+    const i = clamp(Math.floor(g), 0, N - 2);
+    const t = g - i;
+    const A = palettes[i], B = palettes[Math.min(i + 1, N - 1)];
+    const bgStr =
+      `radial-gradient(130% 130% at 72% 8%, ${mixc(A.top,B.top,t)} 0%, ${mixc(A.base,B.base,t)} 52%, ${mixc(A.deep,B.deep,t)} 100%)`;
+    if(bgStr !== lastBG){ document.body.style.background = bgStr; lastBG = bgStr; }
+  }
+
+  paintDots(now);
+
+  const ratio = maxScroll ? current/maxScroll : 0;
+  const thumbH = Math.max(26, trackH/N);
+  const top = ratio*(trackH - thumbH);
+  thumb.style.height = thumbH+'px';
+  if(Math.abs(top - lastThumbTop) > .5){ thumb.style.top = top+'px'; lastThumbTop = top; }
+}
+function pump(){ frame(performance.now()); }   // 输入事件同步渲染
+
+/* ---------------- 吸附：停止输入 350ms 后落到最近整屏 ---------------- */
+let snapTimer = null;
+function snapLater(){
+  if(snapTimer) clearTimeout(snapTimer);
+  snapTimer = setTimeout(()=>{
+    snapTimer = null;
+    target = clamp(Math.round(target/step)*step, 0, maxScroll);
+    pump();
+  }, 350);
+}
+
+/* ---------------- 滚轮（增益后两格即可翻页） ---------------- */
+addEventListener('wheel', e=>{
+  e.preventDefault();
+  const d = (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY) * 1.7;
+  target = clamp(target + d, 0, maxScroll);
+  markInteracted(); snapLater(); pump();
+}, {passive:false});
+
+/* ---------------- 拖动 / 触摸（指针事件统一处理） ---------------- */
+let dragging = false, dragMoved = 0, dragStartY = 0, dragStartTarget = 0;
+
+stage.addEventListener('pointerdown', e=>{
+  if(e.button !== 0) return;
+  dragging = true; dragMoved = 0;
+  dragStartY = e.clientY; dragStartTarget = target;
+  document.body.classList.add('grabbing');
+});
+addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  const dy = dragStartY - e.clientY;
+  if(Math.abs(dy) > dragMoved) dragMoved = Math.abs(dy);
+  if(dragMoved > 6){
+    target = clamp(dragStartTarget + dy*2.1, 0, maxScroll);
+    markInteracted(); snapLater();
+  }
+  pump();
+});
+addEventListener('pointerup', ()=>{
+  if(!dragging) return;
+  dragging = false;
+  document.body.classList.remove('grabbing');
+  snapLater(); pump();
+});
+addEventListener('pointercancel', ()=>{
+  dragging = false;
+  document.body.classList.remove('grabbing');
+});
+/* 拖动后拦截紧随而来的 click，避免误开游戏链接 */
+addEventListener('click', e=>{
+  if(dragMoved > 6){
+    e.preventDefault(); e.stopPropagation();
+    dragMoved = 0;
+  }
+}, true);
+
+/* ---------------- 键盘 ---------------- */
+addEventListener('keydown', e=>{
+  const map = {
+    ArrowDown: step, PageDown: step, ' ': step,
+    ArrowUp: -step, PageUp: -step,
+    Home: -maxScroll, End: maxScroll
+  };
+  if(e.key in map){
+    e.preventDefault();
+    target = clamp(target + map[e.key], 0, maxScroll);
+    markInteracted(); snapLater(); pump();
+  }
+});
+
+/* ---------------- 环境 ---------------- */
+addEventListener('resize', ()=>{
+  syncMetrics();
+  initDots(); pump();
+});
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pump(); });
+addEventListener('focus', pump);
+requestAnimationFrame(function loop(now){
+  frame(now);
+  requestAnimationFrame(loop);
+});
+setInterval(()=>{ if(performance.now() - lastTime > 120) pump(); }, 80);
+
+/* 深链：#p=N 直接定位到第 N 页（等待有效视口后由渲染循环应用） */
+let pendingIndex = null;
+(function(){
+  const m = location.hash.match(/^#p=(\d+)$/);
+  if(m) pendingIndex = clamp(+m[1], 0, N-1);
+})();
+
+/* ---------------- 功能按钮 ---------------- */
+track.addEventListener('click', e=>{
+  const r = track.getBoundingClientRect();
+  target = clamp((e.clientY - r.top) / r.height, 0, 1) * maxScroll;
+  markInteracted(); snapLater(); pump();
+});
+/* 首页 START → 去概念页 */
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  target = 1 * step;
+  markInteracted(); snapLater(); pump();
+});
+/* 结束页 → 回到开头 */
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  target = 0;
+  markInteracted(); snapLater(); pump();
+});
+/* 概念页索引 → 跳到对应游戏 */
+document.querySelectorAll('.index-row').forEach(row=>{
+  row.addEventListener('click', ()=>{
+    target = (+row.dataset.goto) * step;
+    markInteracted(); snapLater(); pump();
+  });
+});
+document.querySelectorAll('.btn-help').forEach(b=>b.addEventListener('click', e=>{
+  e.stopPropagation(); tip.classList.toggle('show');
+}));
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.btn-help')) tip.classList.remove('show');
+});
+
+/* ---------------- 背景色（取自各画面主色） ---------------- */
+const parseRGB = s=>s.match(/\d+/g).map(Number);
+const palettes = panels.map(p=>({
+  top:  parseRGB(p.dataset.top),
+  base: parseRGB(p.dataset.base),
+  deep: parseRGB(p.dataset.deep)
+}));
+const mixc = (a,b,t)=>`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')})`;
+
+/* ---------------- 背景粒子 ---------------- */
+const bg = document.getElementById('bg');
+const bctx = bg.getContext('2d');
+let dots = [];
+const DOT_COLORS = [
+  '255,255,255', '255,209,102', '76,201,240', '247,37,133', '181,23,158', '185,180,255'
+];
+function initDots(){
+  bg.width = innerWidth; bg.height = innerHeight;
+  dots = Array.from({length: Math.round(innerWidth * innerHeight / 16000) + 40}, ()=>({
+    x: Math.random()*bg.width, y: Math.random()*bg.height,
+    r: .7 + Math.random()*1.7,
+    c: DOT_COLORS[Math.random()*DOT_COLORS.length | 0],
+    vx: (Math.random()-.5)*.12, vy: (Math.random()-.5)*.12,
+    ph: Math.random()*Math.PI*2, sp: .4 + Math.random()*1.2
+  }));
+}
+initDots();
+
+function paintDots(now){
+  bctx.clearRect(0,0,bg.width,bg.height);
+  const t = now / 1000;
+  for(const d of dots){
+    d.x += d.vx; d.y += d.vy;
+    if(d.x < -4) d.x = bg.width+4; if(d.x > bg.width+4) d.x = -4;
+    if(d.y < -4) d.y = bg.height+4; if(d.y > bg.height+4) d.y = -4;
+    const a = .25 + .55 * (0.5 + 0.5*Math.sin(t*d.sp + d.ph));
+    bctx.beginPath();
+    bctx.fillStyle = `rgba(${d.c},${a.toFixed(3)})`;
+    bctx.arc(d.x, d.y, d.r, 0, 6.2832);
+    bctx.fill();
+  }
+}
+
+/* ---------------- 卡片/文案引用（首页与概念页没有卡片，用占位对象吸收样式写入） ---------------- */
+const cards  = panels.map(p=>p.querySelector('.card3d') || {style:{}});
+const copies = panels.map(p=>p.querySelector('.copy')   || {style:{}});
+const heroVisual = document.getElementById('heroVisual');
+
+/* ================================================================
+   首页 WebGL shader：紫色星云流动，作为 logo 与文字后的动态主视觉。
+   自己滚出视口后自动停绘，省 GPU。
+   ================================================================ */
+(function initHeroShader(){
+  const canvas = document.getElementById('heroGL');
+  const gl = canvas.getContext('webgl', {antialias:false, alpha:false, powerPreference:'low-power'});
+  if(!gl){ canvas.remove(); return; }
+
+  const VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const FS = `
+    precision mediump float;
+    uniform vec2 R; uniform float T;
+    float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+    float noise(vec2 p){
+      vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),
+                 mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);
+    }
+    float fbm(vec2 p){
+      float v=0.,a=.5;
+      for(int i=0;i<4;i++){v+=a*noise(p);p*=2.03;a*=.5;}
+      return v;
+    }
+    void main(){
+      vec2 p=(gl_FragCoord.xy-.5*R.xy)/R.y;
+      float t=T*.22;
+      vec2 q=vec2(fbm(p*1.5+t*.35), fbm(p*1.5-t*.25+3.7));
+      float f=fbm(p*2.1+q*1.5+vec2(t*.45,-t*.3));
+      vec3 c1=vec3(.01,.04,.16);
+      vec3 c2=vec3(.04,.20,.62);
+      vec3 c3=vec3(.12,.42,.92);
+      vec3 c4=vec3(.45,.75,1.);
+      vec3 col=mix(c1,c2,smoothstep(.15,.60,f));
+      col=mix(col,c3,smoothstep(.55,.85,f));
+      col=mix(col,c4,smoothstep(.85,1.,f)*.55);
+      float streak=sin((p.y*2.6+f*4.2-t*2.2)*3.14159);
+      col+=vec3(.55,.80,1.)*pow(max(streak,0.),9.)*.10;
+      float vig=smoothstep(1.35,.30,length(p));
+      col*=mix(.42,1.06,vig);
+      float g=hash(gl_FragCoord.xy+fract(T)*7.13);
+      col+=(g-.5)*.045;
+      gl_FragColor=vec4(col,1.);
+    }`;
+
+  function shader(type, src){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){ console.error(gl.getShaderInfoLog(s)); return null; }
+    return s;
+  }
+  const vs = shader(gl.VERTEX_SHADER, VS), fs = shader(gl.FRAGMENT_SHADER, FS);
+  if(!vs || !fs){ canvas.remove(); return; }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){ canvas.remove(); return; }
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uR = gl.getUniformLocation(prog, 'R');
+  const uT = gl.getUniformLocation(prog, 'T');
+
+  function fit(){
+    const w = canvas.clientWidth|0, h = canvas.clientHeight|0;
+    if(w && h && (canvas.width !== w || canvas.height !== h)){
+      canvas.width = w; canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+  }
+  const t0 = performance.now();
+  (function draw(now){
+    requestAnimationFrame(draw);
+    /* 只在本页附近可见时绘制 */
+    if(Math.abs(current / step) > 1.15) return;
+    fit();
+    if(!canvas.width) return;
+    gl.uniform2f(uR, canvas.width, canvas.height);
+    gl.uniform1f(uT, (now - t0)/1000);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  })(t0);
+})();
+
+pump();
+</script>
+</body>
+</html>
